@@ -3,9 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <title>Collector Registration</title>
-</head>
-<style>
-  body {
+  <style>
+      body {
     margin: 0;
     font-family: 'Segoe UI', Arial, sans-serif;
     background: #222;
@@ -159,7 +158,8 @@
       margin-top: 20px;
     }
   }
-</style>
+  </style>
+</head>
 <body>
   <div class="container">
     <header>
@@ -173,63 +173,63 @@
           <form id="registrationForm">
             <label for="firstName">First Name:</label>
             <input type="text" id="firstName" name="firstName" required>
-            
+
             <label for="lastName">Last Name:</label>
             <input type="text" id="lastName" name="lastName" required>
-            
+
             <label for="mobile">Mobile number:</label>
             <input type="tel" id="mobile" name="mobile" placeholder="+63 *** *** ****" required>
-            
+
             <label for="password">Password:</label>
             <div class="password-field">
               <input type="password" id="password" name="password" minlength="8" required>
               <span class="eye">&#128065;</span>
             </div>
             <small>Minimum of 8 characters</small>
+
+            <!-- Hidden default values (for development/demo) -->
+            <input type="hidden" id="city" value="Makati">
+            <input type="hidden" id="barangay" value="Magallanes">
+
             <button type="submit">Sign Up</button>
           </form>
         </div>
         <div class="form-image">
-          <img 
-            src="https://cdn.discordapp.com/attachments/1227897073232252938/1380464186035015781/T0BMAAAAASUVORK5CYII.png?ex=6843f8f5&is=6842a775&hm=69d09b293ae913d01f39dea51a2ed9fab73ee9f6ad59859cd2f96c243221d69f&" 
-            alt="Collector Registration Illustration"
-            class="form-image-content">
+          <img src="https://cdn.discordapp.com/attachments/1227897073232252938/1380464186035015781/T0BMAAAAASUVORK5CYII.png?ex=6845f335&is=6844a1b5&hm=1ecac873feeb42a091b627a7750e76521300578376dcad8b6f0c30dc92c0e947&" alt="Collector Registration Illustration">
         </div>
       </div>
     </main>
   </div>
   <script>
-    document.querySelector('form').addEventListener('submit', async function(e) {
+    document.getElementById("registrationForm").addEventListener("submit", async function (e) {
       e.preventDefault();
-      
-      const formData = {
-        firstName: this.querySelector('[name="firstName"]').value,
-        lastName: this.querySelector('[name="lastName"]').value,
-        mobile: this.querySelector('[name="mobile"]').value,
-        password: this.querySelector('[name="password"]').value
+
+      const data = {
+        firstName: document.getElementById("firstName").value,
+        lastName: document.getElementById("lastName").value,
+        mobile: document.getElementById("mobile").value,
+        password: document.getElementById("password").value,
+        city: document.getElementById("city").value,
+        barangay: document.getElementById("barangay").value
       };
 
       try {
-        const response = await fetch('http://127.0.0.1:5000/register', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify(formData)
+        const response = await fetch("/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data)
         });
 
-        if (!response.ok) {
-          const error = await response.json().catch(() => ({ error: "Unknown error" }));
-          throw new Error(error.error || `HTTP error! status: ${response.status}`);
-        }
-
         const result = await response.json();
-        alert(`Success! User ID: ${result.id}`);
-        this.reset();
-      } catch (error) {
-        alert(`Error: ${error.message}`);
-        console.error('Registration error:', error);
+        if (response.ok) {
+          alert(`Success! User ID: ${result.id}`);
+          this.reset();
+        } else {
+          throw new Error(result.error || "Registration failed");
+        }
+      } catch (err) {
+        alert(`Error: ${err.message}`);
+        console.error(err);
       }
     });
   </script>
