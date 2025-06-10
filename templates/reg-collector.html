@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Collector Registration</title>
+</head>
+<style>
+  body {
+    margin: 0;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #222;
+  }
+
+  .container {
+    background: #6FC05E;
+    min-height: 100vh;
+    padding: 20px 0 0 0;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    padding: 20px 0 0 60px;
+  }
+
+  .back-arrow {
+    font-size: 1.5rem;
+    color: #fff;
+    margin-right: 20px;
+    cursor: pointer;
+  }
+
+  .title {
+    color: #fff;
+    font-size: 1.6rem;
+    font-weight: bold;
+    letter-spacing: 1px;
+  }
+
+  main {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    margin-top: 40px;
+  }
+
+  .form-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    display: flex;
+    padding: 40px 30px 30px 30px;
+    min-width: 700px;
+    max-width: 800px;
+    align-items: center;
+  }
+
+  .form-content {
+    flex: 1;
+    margin-right: 40px;
+  }
+
+  .form-content h2 {
+    color: #18713A;
+    font-size: 2rem;
+    margin-bottom: 18px;
+    font-weight: bold;
+  }
+
+  form {
+    display: flex;
+    flex-direction: column;
+  }
+
+  label {
+    font-size: 0.95rem;
+    color: #222;
+    margin-top: 10px;
+    margin-bottom: 2px;
+  }
+
+  input[type="text"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="password"] {
+    padding: 8px 10px;
+    border: 1px solid #bbb;
+    border-radius: 3px;
+    font-size: 1rem;
+    margin-bottom: 4px;
+  }
+
+  .password-field {
+    display: flex;
+    align-items: center;
+  }
+
+  .password-field input {
+    flex: 1;
+    margin-bottom: 0;
+  }
+
+  .eye {
+    margin-left: -30px;
+    cursor: pointer;
+    color: #888;
+  }
+
+  small {
+    color: #888;
+    font-size: 0.85rem;
+    margin-bottom: 12px;
+    margin-top: 2px;
+  }
+
+  button[type="submit"] {
+    background: #18713A;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 12px 0;
+    font-size: 1.1rem;
+    font-weight: bold;
+    margin-top: 18px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  button[type="submit"]:hover {
+    background: #145c2e;
+  }
+
+  .form-image {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 180px; 
+  }
+
+  .form-image img {
+    width: 100%; 
+    height: auto; 
+    max-width: 100%; 
+  }
+
+  @media (max-width: 900px) {
+    .form-card {
+      flex-direction: column;
+      min-width: 320px;
+      max-width: 95vw;
+      padding: 30px 10px;
+    }
+    .form-content {
+      margin-right: 0;
+      margin-bottom: 20px;
+    }
+    .form-image {
+      width: 100px; 
+      margin-top: 20px;
+    }
+  }
+</style>
+<body>
+  <div class="container">
+    <header>
+      <span class="back-arrow">&#8630;</span>
+      <span class="title">COLLECTOR REGISTRATION</span>
+    </header>
+    <main>
+      <div class="form-card">
+        <div class="form-content">
+          <h2>Welcome to the Team!</h2>
+          <form id="registrationForm">
+            <label for="firstName">First Name:</label>
+            <input type="text" id="firstName" name="firstName" required>
+            
+            <label for="lastName">Last Name:</label>
+            <input type="text" id="lastName" name="lastName" required>
+            
+            <label for="mobile">Mobile number:</label>
+            <input type="tel" id="mobile" name="mobile" placeholder="+63 *** *** ****" required>
+            
+            <label for="password">Password:</label>
+            <div class="password-field">
+              <input type="password" id="password" name="password" minlength="8" required>
+              <span class="eye">&#128065;</span>
+            </div>
+            <small>Minimum of 8 characters</small>
+            <button type="submit">Sign Up</button>
+          </form>
+        </div>
+        <div class="form-image">
+          <img 
+            src="https://cdn.discordapp.com/attachments/1227897073232252938/1380464186035015781/T0BMAAAAASUVORK5CYII.png?ex=6843f8f5&is=6842a775&hm=69d09b293ae913d01f39dea51a2ed9fab73ee9f6ad59859cd2f96c243221d69f&" 
+            alt="Collector Registration Illustration"
+            class="form-image-content">
+        </div>
+      </div>
+    </main>
+  </div>
+  <script>
+    document.querySelector('form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      const formData = {
+        firstName: this.querySelector('[name="firstName"]').value,
+        lastName: this.querySelector('[name="lastName"]').value,
+        mobile: this.querySelector('[name="mobile"]').value,
+        password: this.querySelector('[name="password"]').value
+      };
+
+      try {
+        const response = await fetch('http://127.0.0.1:5000/register', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify(formData)
+        });
+
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({ error: "Unknown error" }));
+          throw new Error(error.error || `HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        alert(`Success! User ID: ${result.id}`);
+        this.reset();
+      } catch (error) {
+        alert(`Error: ${error.message}`);
+        console.error('Registration error:', error);
+      }
+    });
+  </script>
+</body>
+</html>

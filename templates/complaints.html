@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Complaint Management</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+    body {
+        font-family: 'Segoe UI', sans-serif;
+        background: linear-gradient(135deg, hsl(127, 41%, 96%) 0%, #f7f7f7 100%);
+        padding: 20px;
+    }
+    h2 {
+        background: linear-gradient(90deg, hsl(127, 41%, 34%) 0%, hsl(127, 41%, 44%) 100%);
+        color: white;
+        padding: 12px 24px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px hsl(127, 41%, 96%);
+        margin-bottom: 28px;
+        border-left: 6px solid hsl(127, 41%, 34%);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .main-wrapper {
+        display: flex;
+        gap: 20px;
+        align-items: flex-start;
+    }
+    .complaints-list {
+        flex: 1;
+        max-width: 45%;
+        min-height: 300px;
+    }
+    .complaint-card {
+        background: white;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 15px;
+        box-shadow: 0 1px 8px hsl(127, 41%, 96%);
+        cursor: pointer;
+        border-left: 5px solid hsl(127, 41%, 44%);
+        transition: box-shadow 0.2s, border-color 0.2s, background 0.2s;
+    }
+    .complaint-card.selected {
+        border: 2px solid hsl(127, 41%, 34%);
+        background: hsl(127, 41%, 96%);
+        box-shadow: 0 2px 12px hsl(127, 41%, 96%);
+    }
+    .complaint-card:hover {
+        box-shadow: 0 4px 16px hsl(127, 41%, 96%);
+        border-color: hsl(127, 41%, 34%);
+        background: hsl(127, 41%, 98%);
+    }
+    .complaint-card h4 {
+        margin: 0;
+        color: hsl(127, 41%, 24%);
+    }
+    .complaint-meta {
+        font-size: 12px;
+        color: hsl(127, 41%, 24%);
+    }
+    .actions {
+        margin-top: 10px;
+    }
+    .actions button {
+        background: none;
+        border: none;
+        font-size: 18px;
+        cursor: pointer;
+        margin-right: 10px;
+        transition: color 0.2s, transform 0.2s;
+    }
+    .actions .accept { color: hsl(127, 41%, 34%); }
+    .actions .reject { color: #f44336; }
+    .actions .respond { color: #2196f3; }
+    .actions button.active {
+        transform: scale(1.2);
+        box-shadow: 0 0 0 2px hsl(127, 41%, 34%);
+        opacity: 0.9;
+    }
+    .actions button:hover.accept {
+        color: hsl(127, 41%, 24%);
+    }
+    .response-panel {
+        flex: 1;
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 1px 8px hsl(127, 41%, 96%);
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        border-top: 5px solid hsl(127, 41%, 34%);
+    }
+    .announcement-section h4 {
+        margin: 0 0 10px;
+        color: hsl(127, 41%, 24%);
+        border-bottom: 2px solid hsl(127, 41%, 34%);
+        padding-bottom: 4px;
+    }
+    .target-options {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    .target-options label {
+        padding: 6px 12px;
+        background: hsl(127, 41%, 96%);
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .target-options label:hover {
+        background: hsl(127, 41%, 92%);
+    }
+    .target-options input:checked + span {
+        font-weight: bold;
+        color: hsl(127, 41%, 34%);
+    }
+    textarea {
+        width: 100%;
+        height: 120px;
+        padding: 10px;
+        resize: vertical;
+        border: 1.5px solid hsl(127, 41%, 44%);
+        border-radius: 6px;
+        background: hsl(127, 41%, 96%);
+        transition: border-color 0.2s;
+    }
+    textarea:focus {
+        border-color: hsl(127, 41%, 34%);
+        outline: none;
+    }
+    .submit-btn {
+        background: linear-gradient(90deg, hsl(127, 41%, 34%) 0%, hsl(127, 41%, 44%) 100%);
+        color: white;
+        padding: 8px 18px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        align-self: flex-start;
+        font-weight: 600;
+        box-shadow: 0 2px 8px hsl(127, 41%, 96%);
+        transition: background 0.2s, box-shadow 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .submit-btn:hover {
+        background: linear-gradient(90deg, hsl(127, 41%, 24%) 0%, hsl(127, 41%, 34%) 100%);
+        box-shadow: 0 4px 16px hsl(127, 41%, 96%);
+    }
+    .submit-btn:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+    }
+    .status-badge {
+        display: inline-block;
+        padding: 2px 6px;
+        font-size: 11px;
+        color: white;
+        border-radius: 4px;
+        margin-left: 8px;
+    }
+    .status-accepted { background-color: hsl(127, 41%, 34%); }
+    .status-rejected { background-color: #f44336; }
+    .response-message {
+        font-size: 14px;
+        padding: 6px 12px;
+        margin-top: 10px;
+        border-radius: 4px;
+        display: none;
+    }
+    .response-message.success {
+        background-color: hsl(127, 41%, 96%);
+        color: hsl(127, 41%, 24%);
+        border: 1px solid hsl(127, 41%, 44%);
+    }
+    .response-message.error {
+        background-color: #ffebee;
+        color: #c62828;
+        border: 1px solid #ef9a9a;
+    }
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        width: 100vw;
+        background: rgba(0,0,0,0.5);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+    }
+    .modal-box {
+        background: white;
+        width: 350px;
+        padding: 20px;
+        border-radius: 8px;
+        position: relative;
+        animation: fadeIn 0.3s ease-out;
+        box-shadow: 0 2px 12px hsl(127, 41%, 96%);
+        border-top: 5px solid hsl(127, 41%, 34%);
+    }
+    .modal-box h3 {
+        margin-top: 0;
+        margin-bottom: 15px;
+        font-weight: 600;
+        color: hsl(127, 41%, 24%);
+    }
+    .modal-box p {
+        margin-bottom: 10px;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+    .modal-close {
+        position: absolute;
+        top: 10px;
+        right: 12px;
+        font-size: 18px;
+        font-weight: bold;
+        cursor: pointer;
+        color: hsl(127, 41%, 34%);
+        border: none;
+        background: none;
+        transition: color 0.2s;
+    }
+    .modal-close:hover {
+        color: hsl(127, 41%, 24%);
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: scale(0.95); }
+        to { opacity: 1; transform: scale(1); }
+    }
+    .loading-spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid rgba(255,255,255,.3);
+        border-radius: 50%;
+        border-top-color: #fff;
+        animation: spin 1s ease-in-out infinite;
+    }
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    .empty-state {
+        text-align: center;
+        padding: 40px 20px;
+        color: hsl(127, 41%, 44%);
+    }
+    .empty-state i {
+        font-size: 48px;
+        margin-bottom: 15px;
+        opacity: 0.6;
+    }
+    #globalError {
+        margin-bottom: 20px;
+    }
+    .retry-btn {
+        background: none;
+        border: none;
+        color: hsl(127, 41%, 34%);
+        text-decoration: underline;
+        cursor: pointer;
+        padding: 0;
+        margin-left: 5px;
+    }
+    </style>
+</head>
+<body>
+
+<h2>
+    Complaint Requests
+    <div id="loadingSpinner" class="loading-spinner" style="display: none;"></div>
+</h2>
+
+<div id="globalError" class="response-message error" style="display: none;"></div>
+
+<div class="main-wrapper">
+    <div class="complaints-list" id="complaintsList">
+        <div class="empty-state">
+            <i class="fas fa-inbox"></i>
+            <p>Loading complaints...</p>
+        </div>
+    </div>
+    <div class="response-panel">
+        <div class="announcement-section">
+            <h4>Announcement Target:</h4>
+            <div class="announcement-options" id="announcementTargets"></div>
+        </div>
+        <textarea id="adminResponse" placeholder="Enter your response..." maxlength="500"></textarea>
+        <div id="charCount" style="font-size: 12px; text-align: right; color: #666;">0/500 characters</div>
+        <button class="submit-btn" id="submitBtn" onclick="submitResponse()">
+            <i class="fas fa-paper-plane"></i> Send
+        </button>
+        <div id="responseStatus" class="response-message"></div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="messagePreviewModal">
+    <div class="modal-box">
+        <button class="modal-close" onclick="closeModal()" title="Close">&times;</button>
+        <h3>Message Preview</h3>
+        <p id="previewMessage"></p>
+        <p><strong>ID:</strong> <span id="previewUserId"></span></p>
+    </div>
+</div>
+
+<script>
+    // Configuration
+    const config = {
+        city: "Makati",
+        barangay: "Magallanes",
+        announcementAreas: ["Bel-Air Village", "Paseo de Magallanes", "San Lorenzo Village", "Urdaneta Village"]
+    };
+
+    // State management
+    let complaints = [];
+    let selectedComplaintId = null;
+    let currentStatus = null;
+    let isOnline = navigator.onLine;
+
+    // DOM Elements
+    const complaintsList = document.getElementById("complaintsList");
+    const adminResponse = document.getElementById("adminResponse");
+    const charCount = document.getElementById("charCount");
+    const submitBtn = document.getElementById("submitBtn");
+    const globalError = document.getElementById("globalError");
+
+    // Initialize
+    window.onload = () => {
+        renderTargets();
+        loadComplaints();
+        setupEventListeners();
+        checkNetworkStatus();
+    };
+
+    // Event Listeners
+    function setupEventListeners() {
+        adminResponse.addEventListener("input", updateCharCount);
+        window.addEventListener('online', handleNetworkChange);
+        window.addEventListener('offline', handleNetworkChange);
+    }
+
+    function updateCharCount() {
+        const count = adminResponse.value.length;
+        charCount.textContent = `${count}/500 characters`;
+        if (count > 450) {
+            charCount.style.color = "#f44336";
+        } else if (count > 350) {
+            charCount.style.color = "#ff9800";
+        } else {
+            charCount.style.color = "#666";
+        }
+    }
+
+    function handleNetworkChange() {
+        isOnline = navigator.onLine;
+        if (isOnline) {
+            showGlobalMessage("Back online. Loading complaints...", "success");
+            loadComplaints();
+        } else {
+            showGlobalMessage("Connection lost. Some features may not work.", "error");
+        }
+    }
+
+    function checkNetworkStatus() {
+        if (!isOnline) {
+            showGlobalMessage("You are offline. Please check your connection.", "error");
+        }
+    }
+
+    // Core Functions
+    async function loadComplaints() {
+        try {
+            showLoading(true);
+            clearGlobalError();
+            
+            const res = await fetch(`/get_complaints/${config.city}/${config.barangay}`);
+            
+            if (!res.ok) {
+                const error = await res.json().catch(() => ({}));
+                throw new Error(error.message || "Failed to load complaints");
+            }
+            
+            complaints = await res.json();
+            
+            if (!Array.isArray(complaints)) {
+                throw new Error("Invalid complaints data format");
+            }
+            
+            if (complaints.length === 0) {
+                renderEmptyState("No complaints found");
+            } else {
+                renderComplaints();
+            }
+        } catch (error) {
+            console.error("Error loading complaints:", error);
+            renderEmptyState(error.message);
+            showGlobalMessage(error.message, "error");
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    function renderComplaints() {
+        complaintsList.innerHTML = '';
+
+        complaints.forEach(c => {
+            const card = document.createElement("div");
+            card.className = "complaint-card";
+            const complaintPath = formatComplaintPath(c.user_id, c.id);
+            card.id = `complaint-${complaintPath.replace(/\//g, '-')}`;
+            card.onclick = () => showPreview(c.message, c.user_id);
+
+            let statusBadge = '';
+            if (c.complaint_status === 'accepted') {
+                statusBadge = '<span class="status-badge status-accepted">Accepted</span>';
+            } else if (c.complaint_status === 'rejected') {
+                statusBadge = '<span class="status-badge status-rejected">Rejected</span>';
+            }
+
+            let responseHtml = '';
+            if (c.response) {
+                if (c.response.acceptedmessage_response) {
+                    responseHtml = `<p><strong>Response:</strong> ${c.response.acceptedmessage_response.message}</p>`;
+                } else if (c.response.rejectedmessage_response) {
+                    responseHtml = `<p><strong>Response:</strong> ${c.response.rejectedmessage_response.message}</p>`;
+                }
+            }
+
+            card.innerHTML = `
+                <h4>${c.message}</h4>
+                <div class="complaint-meta">${c.user_id}<br>Ref: ${c.id}</div>
+                <p><strong>Status:</strong> ${c.complaint_status || 'pending'} ${statusBadge}</p>
+                ${responseHtml}
+                <div class="actions">
+                    <button type="button" class="accept" onclick="setPendingAccept(event)" title="Mark for Acceptance">
+                        <i class="fa fa-check-circle"></i>
+                    </button>
+                    <button type="button" class="reject" onclick="setPendingReject(event)" title="Mark for Rejection">
+                        <i class="fa fa-times-circle"></i>
+                    </button>
+                    <button type="button" class="respond" onclick="selectComplaint('${c.user_id}', '${c.id}', event)" title="Select Complaint">
+                        <i class="fa fa-comment-dots"></i>
+                    </button>
+                </div>
+            `;
+            complaintsList.appendChild(card);
+        });
+    }
+
+    function renderEmptyState(message = "No complaints found") {
+        complaintsList.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-inbox"></i>
+                <p>${message}</p>
+                ${message.includes("Error") ? `<button class="retry-btn" onclick="loadComplaints()">Retry</button>` : ''}
+            </div>
+        `;
+    }
+
+        function renderTargets() {
+            const targetDiv = document.getElementById("announcementTargets");
+            targetDiv.innerHTML = '<div class="target-options">' + 
+                config.announcementAreas.map(area => `
+                    <label>
+                        <input type="radio" name="target" value="${area}" 
+                            onchange="handleAnnouncementSelect(event)">
+                        <span>${area}</span>
+                    </label>
+                `).join('') + '</div>';
+        }
+function handleAnnouncementSelect(event) {
+    if (event.target.checked) {
+        // Clear complaint selection state
+        selectedComplaintId = null;
+        currentStatus = null;
+        
+        // Visual cleanup
+        document.querySelectorAll('.complaint-card').forEach(card => {
+            card.classList.remove('selected');
+        });
+        document.querySelectorAll('.actions button.active').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        // Visual feedback for selected announcement
+        document.querySelectorAll('#announcementTargets label').forEach(label => {
+            label.style.backgroundColor = '';
+        });
+        event.target.closest('label').style.backgroundColor = 'hsl(127, 41%, 90%)';
+        
+        // Focus on the message area
+        adminResponse.focus();
+    }
+}
+
+    function formatComplaintPath(userId, complaintId) {
+        if (complaintId.includes(userId)) {
+            return `${userId}/${complaintId}`;
+        }
+        if (complaintId.match(/^\d{4}-\d{2}-\d{4}-\d+$/)) {
+            const parts = complaintId.split('-');
+            return `${parts[1]}-${parts[2]}/${parts[1]}-${parts[2]}-${parts[3]}`;
+        }
+        return `${userId}/${complaintId}`;
+    }
+
+    // Action Handlers
+    function setPendingAccept(event) {
+        event.stopPropagation();
+        currentStatus = 'accepted';
+        document.querySelectorAll('#announcementTargets input').forEach(cb => cb.checked = false);
+        document.querySelectorAll('.actions button').forEach(btn => btn.classList.remove('active'));
+        event.currentTarget.classList.add('active');
+        adminResponse.focus();
+    }
+
+    function setPendingReject(event) {
+        event.stopPropagation();
+        currentStatus = 'rejected';
+        document.querySelectorAll('#announcementTargets input').forEach(cb => cb.checked = false);
+        document.querySelectorAll('.actions button').forEach(btn => btn.classList.remove('active'));
+        event.currentTarget.classList.add('active');
+        adminResponse.focus();
+    }
+
+function selectComplaint(userId, complaintId, event) {
+    event.stopPropagation();
+    selectedComplaintId = formatComplaintPath(userId, complaintId);
+    currentStatus = null;
+    
+    // Clear any announcement selection
+    document.querySelectorAll('#announcementTargets input').forEach(cb => {
+        cb.checked = false;
+        cb.closest('label').style.backgroundColor = '';
+    });
+    
+    // Visual feedback
+    document.querySelectorAll('.complaint-card').forEach(card => {
+        card.classList.remove('selected');
+    });
+    document.querySelectorAll('.actions button.active').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    event.currentTarget.closest('.complaint-card').classList.add('selected');
+    adminResponse.focus();
+}
+    async function submitResponse() {
+        if (!isOnline) {
+            showResponseMessage("You are offline. Please connect to the internet.", "error");
+            return;
+        }
+
+        const message = adminResponse.value.trim();
+        const targets = [...document.querySelectorAll('#announcementTargets input:checked')].map(cb => cb.value);
+        
+        // Save original button state
+        const originalText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+
+        try {
+            if (targets.length > 0) {
+                await handleAnnouncement(message, targets);
+            } else {
+                await handleComplaintResponse(message);
+            }
+        } catch (error) {
+            console.error("Submission error:", error);
+            showResponseMessage(error.message, "error");
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        }
+    }
+
+    async function handleAnnouncement(message, targets) {
+        if (!message) {
+            throw new Error("Message is required for announcements");
+        }
+
+        const formData = new FormData();
+        targets.forEach(t => formData.append("targets", t));
+        formData.append("message", message);
+        formData.append("city", config.city);
+        formData.append("barangay", config.barangay);
+
+        const response = await fetch("/submit_announcement_only", {
+            method: "POST",
+            body: formData
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.message || "Failed to post announcement");
+        }
+
+        showResponseMessage("Announcement posted!", "success");
+        adminResponse.value = '';
+        document.querySelectorAll('#announcementTargets input').forEach(cb => cb.checked = false);
+        document.querySelectorAll('.actions button.active').forEach(btn => btn.classList.remove('active'));
+        currentStatus = null;
+    }
+
+    async function handleComplaintResponse(message) {
+        if (!selectedComplaintId) {
+            throw new Error("Please select a complaint");
+        }
+
+        if (!currentStatus) {
+            throw new Error("Please select Accept or Reject first");
+        }
+
+        if (!message) {
+            throw new Error("Message is required");
+        }
+
+        const formData = new FormData();
+        formData.append("message", message);
+        formData.append("complaint_id", selectedComplaintId);
+        formData.append("new_status", currentStatus);
+        formData.append("city", config.city);
+        formData.append("barangay", config.barangay);
+
+        const response = await fetch("/submit_admin_response", {
+            method: "POST",
+            body: formData
+        });
+
+        const result = await response.json();
+        if (result.status !== "success") {
+            throw new Error(result.message || "Failed to send response");
+        }
+
+        showResponseMessage("Response sent!", "success");
+        adminResponse.value = '';
+        document.querySelectorAll('.actions button.active').forEach(btn => btn.classList.remove('active'));
+        currentStatus = null;
+        loadComplaints();
+    }
+
+    // UI Helpers
+    function showLoading(show) {
+        document.getElementById("loadingSpinner").style.display = show ? "inline-block" : "none";
+        if (show) {
+            complaintsList.innerHTML = '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>Loading complaints...</p></div>';
+        }
+    }
+
+    function showResponseMessage(message, type) {
+        const responseBox = document.getElementById("responseStatus");
+        responseBox.textContent = message;
+        responseBox.className = `response-message ${type}`;
+        responseBox.style.display = "block";
+        setTimeout(() => responseBox.style.display = "none", 5000);
+    }
+
+    function showGlobalMessage(message, type) {
+        globalError.textContent = message;
+        globalError.className = `response-message ${type}`;
+        globalError.style.display = "block";
+        if (type === "success") {
+            setTimeout(() => globalError.style.display = "none", 5000);
+        }
+    }
+
+    function clearGlobalError() {
+        globalError.style.display = "none";
+    }
+
+    function showPreview(message, userId) {
+        document.getElementById("previewMessage").textContent = message;
+        document.getElementById("previewUserId").textContent = userId;
+        document.getElementById("messagePreviewModal").style.display = "flex";
+    }
+
+    function closeModal() {
+        document.getElementById("messagePreviewModal").style.display = "none";
+    }
+</script>
+</body>
+</html>

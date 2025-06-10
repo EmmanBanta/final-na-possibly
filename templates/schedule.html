@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Manage Schedule</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      flex-direction: row;
+    }
+    .sidebar {
+      width: 250px;
+      background: #2e7d32;
+      color: white;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    .sidebar h3 { margin-top: 0; }
+    .locations {
+      list-style: none;
+      padding: 0;
+      margin-bottom: 20px;
+    }
+    .locations li {
+      cursor: pointer;
+      padding: 10px;
+      margin-bottom: 5px;
+      background: #388e3c;
+      border-radius: 5px;
+      transition: background 0.3s;
+    }
+    .locations li:hover {
+      background: #43a047;
+    }
+    .main {
+      flex: 1;
+      padding: 30px;
+      background: #f4f4f4;
+      overflow-y: auto;
+      box-sizing: border-box;
+    }
+    .form-group { margin-bottom: 15px; }
+    label { display: block; margin-bottom: 5px; }
+    input[type="time"] {
+      padding: 8px;
+      width: 150px;
+    }
+    .day-block {
+      margin-bottom: 15px;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      background: #fff;
+    }
+    .day-block label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 5px;
+    }
+    .btn {
+      background: #388e3c;
+      color: white;
+      padding: 10px 15px;
+      border: none;
+      cursor: pointer;
+      margin-top: 10px;
+      border-radius: 4px;
+    }
+    .btn-danger {
+      background: #d32f2f;
+      margin-left: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="sidebar">
+    <h3>Areas</h3>
+    <ul class="locations" id="locationList"></ul>
+    <button class="btn" onclick="addLocation()">+ Add Location</button>
+  </div>
+
+  <div class="main">
+    <h2 id="selectedLocationTitle">Select an area</h2>
+    <form id="scheduleForm" onsubmit="saveSchedule(event)">
+      <div id="dayBlocks"></div>
+      <button type="submit" class="btn">Save Schedule</button>
+      <button type="button" class="btn btn-danger" onclick="deleteSchedule()">Delete Schedule</button>
+    </form>
+  </div>
+
+  <script>
+    const city = "Makati";
+    const barangay = "Magallanes";
+    let selectedLocation = null;
+
+    const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+    function createDayBlocks(schedule = {}) {
+      const container = document.getElementById('dayBlocks');
+      container.innerHTML = '';
+      daysOfWeek.forEach(day => {
+        const entry = schedule[day] || {};
+        const enabled = Boolean(entry.from && entry.to);
+        const block = document.createElement('div');
+        block.className = 'day-block';
+        block.innerHTML = `
+          <label>
+            <input type="checkbox" name="${day}_enabled" ${enabled ? 'checked' : ''}>
+            <strong>${day}</strong>
+          </label>
+          <label>From: <input type="time" name="${day}_from" value="${entry.from || ''}"></label>
+          <label>To: <input type="time" name="${day}_to" value="${entry.to || ''}"></label>
+        `;
+        container.appendChild(block);
+      });
+    }
+
+    async function fetchLocations() {
+      try {
+        const res = await fetch(`/api/locations?city=${encodeURIComponent(city)}&barangay=${encodeURIComponent(barangay)}`);
+        const locations = await res.json();
+        const list = document.getElementById('locationList');
+        list.innerHTML = '';
+        locations.forEach(loc => {
+          const li = document.createElement('li');
+          li.textContent = loc;
+          li.onclick = () => selectLocation(loc);
+          list.appendChild(li);
+        });
+      } catch (err) {
+        alert("Failed to fetch locations.");
+        console.error(err);
+      }
+    }
+
+    async function selectLocation(loc) {
+      selectedLocation = loc;
+      document.getElementById('selectedLocationTitle').textContent = `Schedule for ${loc}`;
+      try {
+        const res = await fetch(`/api/schedule/${encodeURIComponent(city)}/${encodeURIComponent(barangay)}/${encodeURIComponent(loc)}`);
+        const schedule = await res.json();
+        createDayBlocks(schedule);
+      } catch (err) {
+        alert("Failed to fetch schedule.");
+        console.error(err);
+      }
+    }
+
+    async function addLocation() {
+      const loc = prompt("Enter new area name (e.g. Village, Subdivision):");
+      if (!loc || !loc.trim()) {
+        alert("Area name cannot be empty.");
+        return;
+      }
+      const name = loc.trim();
+      const dummySchedule = { Mon: { from: "08:00", to: "17:00" } };
+      try {
+        const res = await fetch(`/api/schedule/${encodeURIComponent(city)}/${encodeURIComponent(barangay)}/${encodeURIComponent(name)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(dummySchedule)
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || "Unknown error");
+        }
+        fetchLocations();
+      } catch (err) {
+        alert("Failed to add location: " + err.message);
+      }
+    }
+
+    async function saveSchedule(event) {
+      event.preventDefault();
+      if (!selectedLocation) {
+        alert("Please select a location.");
+        return;
+      }
+      const form = document.getElementById('scheduleForm');
+      const schedule = {};
+      for (const day of daysOfWeek) {
+        const enabled = form[`${day}_enabled`].checked;
+        const from = form[`${day}_from`].value;
+        const to = form[`${day}_to`].value;
+        if (enabled) {
+          if (!from || !to) {
+            alert(`Please fill out both times for ${day}`);
+            return;
+          }
+          if (from >= to) {
+            alert(`${day}: "From" time must be earlier than "To" time.`);
+            return;
+          }
+          schedule[day] = { from, to };
+        }
+      }
+
+      try {
+        const res = await fetch(`/api/schedule/${encodeURIComponent(city)}/${encodeURIComponent(barangay)}/${encodeURIComponent(selectedLocation)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(schedule)
+        });
+        if (!res.ok) throw new Error("Failed to save schedule.");
+        alert("Schedule saved.");
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function deleteSchedule() {
+      if (!selectedLocation) {
+        alert("Please select a location.");
+        return;
+      }
+      if (!confirm(`Are you sure you want to delete the schedule for ${selectedLocation}?`)) return;
+      try {
+        const res = await fetch(`/api/schedule/${encodeURIComponent(city)}/${encodeURIComponent(barangay)}/${encodeURIComponent(selectedLocation)}`, {
+          method: 'DELETE'
+        });
+        const result = await res.json();
+        if (res.ok) {
+          alert(result.message || "Schedule deleted.");
+          selectedLocation = null;
+          document.getElementById('selectedLocationTitle').textContent = "Select an area";
+          document.getElementById('dayBlocks').innerHTML = '';
+          fetchLocations();
+        } else {
+          alert(result.error || "Failed to delete schedule.");
+        }
+      } catch (err) {
+        alert("Error deleting schedule: " + err.message);
+      }
+    }
+
+    fetchLocations();
+  </script>
+</body>
+</html>
