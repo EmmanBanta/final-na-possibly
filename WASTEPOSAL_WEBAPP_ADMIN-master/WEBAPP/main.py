@@ -1,55 +1,41 @@
 from flask import Flask, redirect, url_for, render_template, request, jsonify
 import firebase_admin
 from firebase_admin import credentials, db
-import random
-import string
-import requests
-
-# Import Blueprints
 from auth import auth
 from schedule_page import schedule_page
 from complaints import complaints
 
-# Initialize Flask app
 app = Flask(__name__)
 app.secret_key = 'EATBOLAGA'
 
-# Initialize Firebase Admin SDK
-cred = credentials.Certificate("final-na-possibly-main/WASTEPOSAL_WEBAPP_ADMIN-master/serviceAccountKey.json")
+cred = credentials.Certificate("../serviceAccountKey.json")
 firebase_admin.initialize_app(cred, {
     'databaseURL': 'https://wasteposal-c1fe3afa-default-rtdb.asia-southeast1.firebasedatabase.app/'
 })
 
-# Firebase base path for collectors
-FIREBASE_BASE_URL = 'https://wasteposal-c1fe3afa-default-rtdb.asia-southeast1.firebasedatabase.app'
-FIREBASE_USER_PATH = '/Makati/Magallanes/User'
-
-# Register blueprints
 app.register_blueprint(auth)
 app.register_blueprint(schedule_page)
 app.register_blueprint(complaints)
 
-# Route: Redirect to login
 @app.route("/")
 def login():
     return redirect(url_for('auth.login'))
 
-# Route: Admin Dashboard
-@app.route("/home")
+@app.route('/home')
 def home():
-    return render_template("dashboard.html")
+    city = "Makati"
+    barangay = "Magallanes"
+    return render_template("dashboard.html", city=city, barangay=barangay)
 
-# Route: Schedule Page
 @app.route('/schedule')
 def schedule_page_view():
     city = "Makati"
     barangay = "Magallanes"
     return render_template('schedule.html', city=city, barangay=barangay)
 
-# Route: Registration Page (HTML Form)
-@app.route("/register-page")
-def register_page():
-    return render_template("reg-collector.html")
+@app.route('/reg-collector')
+def reg_collector():
+    return render_template('reg-collector.html')
 
 # Function to generate unique collector ID
 def generate_unique_collector_id(existing_ids):
@@ -136,6 +122,7 @@ def register():
             "details": str(e)
         }), 500
 
+
 # Route: Firebase connection test
 @app.route("/test-firebase")
 def test_firebase():
@@ -145,7 +132,7 @@ def test_firebase():
         return f"Firebase DB connected! Root data: {data}"
     except Exception as e:
         return f"Failed to connect to Firebase DB: {str(e)}"
-
+    
 # Route: Add new area to database
 @app.route("/add_area", methods=["POST"])
 def add_area():
@@ -170,6 +157,5 @@ def add_area():
     except Exception as e:
         return f"Error adding area: {str(e)}", 500
 
-# Run the app
 if __name__ == "__main__":
     app.run(debug=True)
