@@ -4,6 +4,13 @@ import datetime
 
 complaints = Blueprint('complaints', __name__)
 
+@complaints.after_request
+def add_header(response):
+    if request.path.startswith('/api/'):
+        response.headers['Content-Type'] = 'application/json'
+    return response
+
+
 @complaints.route('/submit_complaint/<city>/<barangay>', methods=['POST'])
 def submit_complaint(city, barangay):
     data = request.get_json()
@@ -34,6 +41,7 @@ def submit_complaint(city, barangay):
 
 @complaints.route('/complaints/<city>/<barangay>')
 def complaints_page(city, barangay):
+    
     try:
         # 1. Validate inputs first
         if not city or not barangay:
@@ -45,6 +53,8 @@ def complaints_page(city, barangay):
         # 3. Get data with timeout protection
         complaints_ref = db.reference(f'/{city}/{barangay}/complaints')
         user_ref = db.reference(f'/{city}/{barangay}/User')
+
+        
 
         try:
             nested_complaints = complaints_ref.get() or {}
@@ -125,7 +135,7 @@ def complaints_page(city, barangay):
 @complaints.route('/submit_admin_response/<city>/<barangay>', methods=['POST'])
 def submit_admin_response(city, barangay):
     try:
-        data = request.form
+        data = request.form or request.get_json(force=True, silent=True) or {}
         message = data.get("message", "").strip()
         complaint_identifier = data.get("complaint_id", "").strip()
         new_status = data.get("new_status", "").lower().strip()
@@ -238,12 +248,16 @@ def get_user_complaints(city, barangay, user_id):
     return jsonify({"status": "success", "complaints": response})
 
 
-@complaints.route("/get_complaints/<city>/<barangay>", methods=["GET"])
+@complaints.route('/api/complaints/<city>/<barangay>', methods=["GET"])
 def get_complaints(city, barangay):
     try:
+        # Parse pagination params
+        page = int(request.args.get("page", 1))
+        page_size = int(request.args.get("page_size", 10))
+
         complaints_root = db.reference(f'/{city}/{barangay}/complaints')
         all_data = complaints_root.get() or {}
-        
+
         complaints_list = []
         for user_id, user_complaints in all_data.items():
             if not isinstance(user_complaints, dict):
@@ -255,29 +269,46 @@ def get_complaints(city, barangay):
                         "id": comp_id,
                         "user_id": user_id
                     })
-        
+
+        # Sort by timestamp (optional)
+        complaints_list.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+
+        # Pagination logic
+        total_items = len(complaints_list)
+        total_pages = max(1, (total_items + page_size - 1) // page_size)
+        start = (page - 1) * page_size
+        end = start + page_size
+        paginated = complaints_list[start:end]
+
         return jsonify({
             "status": "success",
-            "complaints": complaints_list,
-            "city": city,
-            "barangay": barangay
+            "complaints": paginated,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": total_pages,
+            "total_items": total_items
         })
+
     except Exception as e:
-        return jsonify({
-            "status": "error",
-            "message": str(e)
-        }), 500
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 
 
 @complaints.route('/submit_announcement_only/<city>/<barangay>', methods=['POST'])
 def submit_announcement_only(city, barangay):
     try:
         # Ensure we're getting form data
+        if request.is_json:
+            data = request.get_json()
+            message = data.get("message", "").strip()
+            targets = data.get("targets", [])
+        else:
+            data = request.form or request.get_json(force=True, silent=True) or {}
+            message = request.form.get("message", "").strip()
+            targets = request.form.getlist("targets") or []
+            
         if not request.form:
             return jsonify({"status": "error", "message": "Form data required"}), 400
-            
-        message = request.form.get("message", "").strip()
-        targets = request.form.getlist("targets") or []
 
         if not message:
             return jsonify({"status": "error", "message": "Message is required"}), 400
@@ -290,7 +321,8 @@ def submit_announcement_only(city, barangay):
         # Store all targets in a single operation
         updates = {}
         for area in targets:
-            key = announcement_ref.push().key
+            area_ref = db.reference(f"{city}/{barangay}/announcements/{area}")
+            key = area_ref.push().key  
             updates[f"{area}/{key}"] = {
                 "from": "admin",
                 "message": message,
@@ -313,6 +345,61 @@ def submit_announcement_only(city, barangay):
             "message": f"Failed to post announcement: {str(e)}"
         }), 500
 
+@complaints.route('/api/recent_announcements/<city>/<barangay>', methods=['GET'])
+def get_recent_announcements(city, barangay):
+    try:
+        area_filter = request.args.get('area')
+        page = int(request.args.get("page", 1))
+        page_size = int(request.args.get("page_size", 5))
+
+        announcements_ref = db.reference(f"{city}/{barangay}/announcements")
+        all_data = announcements_ref.get() or {}
+
+        announcements = []
+        for area, area_announcements in all_data.items():
+            if area_filter and area != area_filter:
+                continue
+            for aid, ann in (area_announcements or {}).items():
+                announcements.append({
+                    "id": aid,
+                    "message": ann.get("message", ""),
+                    "timestamp": ann.get("timestamp", ""),
+                    "area": area,
+                    "from": ann.get("from", "admin"),
+                    "type": ann.get("type", "announcement")
+                })
+
+        # Sort by newest first
+        announcements.sort(key=lambda a: a["timestamp"], reverse=True)
+
+        # Pagination
+        total_items = len(announcements)
+        total_pages = max(1, (total_items + page_size - 1) // page_size)
+        start = (page - 1) * page_size
+        end = start + page_size
+        paginated = announcements[start:end]
+
+        return jsonify({
+            "status": "success",
+            "announcements": paginated,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": total_pages,
+            "total_items": total_items
+        })
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+        
+@complaints.route('/api/announcement_areas/<city>/<barangay>', methods=['GET'])
+def get_announcement_areas(city, barangay):
+    try:
+        ref = db.reference(f'{city}/{barangay}/announcements')
+        data = ref.get() or {}
+
+        areas = sorted(data.keys())
+        return jsonify({"status": "success", "areas": areas})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 @complaints.route('/update_complaint_status/<city>/<barangay>', methods=['POST'])
 def update_complaint_status(city, barangay):

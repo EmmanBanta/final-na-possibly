@@ -290,12 +290,29 @@
             <h4>Announcement Target:</h4>
             <div class="announcement-options" id="announcementTargets"></div>
         </div>
+        
         <textarea id="adminResponse" placeholder="Enter your response..." maxlength="500"></textarea>
         <div id="charCount" style="font-size: 12px; text-align: right; color: #666;">0/500 characters</div>
         <button class="submit-btn" id="submitBtn" onclick="submitResponse()">
             <i class="fas fa-paper-plane"></i> Send
         </button>
         <div id="responseStatus" class="response-message"></div>
+
+        <div class="announcement-controls" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <div>
+                <label for="filterArea" style="font-weight: 600;">Filter by Area:</label>
+                <select id="filterArea" onchange="loadRecentAnnouncements(1)">
+                    <option value="">All</option>
+                    ${config.announcementAreas.map(area => `<option value="${area}">${area}</option>`).join('')}
+                </select>
+            </div>
+            <div id="paginationControls"></div>
+        </div>
+        <div class="response-panel" style="margin-top: 30px;">
+            <h4>Recent Announcements</h4>
+            <div id="announcementBoard" style="display: flex; flex-direction: column; gap: 12px;"></div>
+        </div>
+
     </div>
 </div>
 
@@ -313,7 +330,7 @@
     const config = {
         city: "Makati",
         barangay: "Magallanes",
-        announcementAreas: ["Bel-Air Village", "Paseo de Magallanes", "San Lorenzo Village", "Urdaneta Village"]
+        announcementAreas: ["Bel-Air Village", "Paseo de Magallanes", "San Lorenzo Village", "Urdaneta Village"],
     };
 
     // State management
@@ -321,6 +338,13 @@
     let selectedComplaintId = null;
     let currentStatus = null;
     let isOnline = navigator.onLine;
+
+    // Pagination state (ADD HERE)
+    let currentPage = 1;
+    const pageSize = 5;
+
+    let currentAnnouncementPage = 1;
+    const announcementPageSize = 5;
 
     // DOM Elements
     const complaintsList = document.getElementById("complaintsList");
@@ -335,6 +359,8 @@
         loadComplaints();
         setupEventListeners();
         checkNetworkStatus();
+        populateAnnouncementAreaFilter();
+        loadRecentAnnouncements();
     };
 
     // Event Listeners
@@ -373,29 +399,28 @@
     }
 
     // Core Functions
-    async function loadComplaints() {
+    async function loadComplaints(page = 1) {
         try {
             showLoading(true);
             clearGlobalError();
-            
-            const res = await fetch(`/get_complaints/${config.city}/${config.barangay}`);
-            
-            if (!res.ok) {
-                const error = await res.json().catch(() => ({}));
-                throw new Error(error.message || "Failed to load complaints");
+
+            const res = await fetch(`/api/complaints/${config.city}/${config.barangay}?page=${page}&page_size=${pageSize}`);
+            const data = await res.json();
+
+            if (!res.ok || data.status !== "success") {
+                throw new Error(data.message || "Failed to load complaints");
             }
-            
-            complaints = await res.json();
-            
-            if (!Array.isArray(complaints)) {
-                throw new Error("Invalid complaints data format");
-            }
-            
+
+            complaints = data.complaints;
+            currentPage = data.page;
+
             if (complaints.length === 0) {
                 renderEmptyState("No complaints found");
             } else {
                 renderComplaints();
+                renderPagination(data.total_pages);
             }
+
         } catch (error) {
             console.error("Error loading complaints:", error);
             renderEmptyState(error.message);
@@ -404,6 +429,27 @@
             showLoading(false);
         }
     }
+
+    function renderPagination(totalPages) {
+        const container = document.createElement("div");
+        container.style.marginTop = "20px";
+        container.style.textAlign = "center";
+
+        for (let i = 1; i <= totalPages; i++) {
+            const btn = document.createElement("button");
+            btn.textContent = i;
+            btn.style.margin = "0 4px";
+            btn.style.padding = "6px 10px";
+            btn.style.border = i === currentPage ? "2px solid hsl(127, 41%, 34%)" : "1px solid #ccc";
+            btn.style.background = i === currentPage ? "hsl(127, 41%, 96%)" : "white";
+            btn.style.cursor = "pointer";
+            btn.onclick = () => loadComplaints(i);
+            container.appendChild(btn);
+        }
+
+        complaintsList.appendChild(container);
+    }
+
 
     function renderComplaints() {
         complaintsList.innerHTML = '';
@@ -527,6 +573,31 @@ function handleAnnouncementSelect(event) {
         event.currentTarget.classList.add('active');
         adminResponse.focus();
     }
+async function populateAnnouncementAreaFilter() {
+    const filter = document.getElementById("filterArea");
+    if (!filter) return;
+
+    try {
+        const res = await fetch(`/api/announcement_areas/${config.city}/${config.barangay}`);
+        const data = await res.json();
+
+        if (!res.ok || data.status !== "success") {
+            throw new Error(data.message || "Failed to load areas");
+        }
+
+        const areas = data.areas || [];
+
+        filter.innerHTML = `<option value="">All</option>`;
+        areas.forEach(area => {
+            const opt = document.createElement("option");
+            opt.value = area;
+            opt.textContent = area;
+            filter.appendChild(opt);
+        });
+    } catch (err) {
+        console.error("Failed to load area filter:", err);
+    }
+}
 
 function selectComplaint(userId, complaintId, event) {
     event.stopPropagation();
@@ -590,7 +661,7 @@ function selectComplaint(userId, complaintId, event) {
         formData.append("city", config.city);
         formData.append("barangay", config.barangay);
 
-        const response = await fetch("/submit_announcement_only", {
+        const response = await fetch(`/submit_announcement_only/${config.city}/${config.barangay}`, {
             method: "POST",
             body: formData
         });
@@ -606,6 +677,69 @@ function selectComplaint(userId, complaintId, event) {
         document.querySelectorAll('.actions button.active').forEach(btn => btn.classList.remove('active'));
         currentStatus = null;
     }
+
+    async function loadRecentAnnouncements(page = 1) {
+        const area = document.getElementById("filterArea")?.value || "";
+        currentAnnouncementPage = page;
+
+        try {
+            const res = await fetch(`/api/recent_announcements/${config.city}/${config.barangay}?area=${encodeURIComponent(area)}&page=${page}&page_size=${announcementPageSize}`);
+            const data = await res.json();
+
+            const board = document.getElementById("announcementBoard");
+            board.innerHTML = '';
+
+            if (!res.ok || data.status !== "success") {
+                throw new Error(data.message || "Failed to load announcements");
+            }
+
+            if (data.announcements.length === 0) {
+                board.innerHTML = "<p style='color:#666;'>No announcements found.</p>";
+                renderAnnouncementPagination(1, 1);
+                return;
+            }
+
+            data.announcements.forEach(a => {
+                const card = document.createElement("div");
+                card.style.padding = "12px";
+                card.style.border = "1px solid #ccc";
+                card.style.borderRadius = "6px";
+                card.style.background = "#fff";
+                card.style.boxShadow = "0 1px 6px rgba(0,0,0,0.05)";
+                card.innerHTML = `
+                    <strong>${a.area}</strong> &middot; 
+                    <em style="color:#555">${new Date(a.timestamp).toLocaleString()}</em><br>
+                    ${a.message}
+                `;
+                board.appendChild(card);
+            });
+
+            renderAnnouncementPagination(data.total_pages, data.page);
+        } catch (error) {
+            console.error("Announcement load error:", error);
+            document.getElementById("announcementBoard").innerHTML = `<p style="color:red;">Could not load announcements.</p>`;
+        }
+    }
+
+    function renderAnnouncementPagination(totalPages, currentPage) {
+        const container = document.getElementById("paginationControls");
+        container.innerHTML = '';
+
+        if (totalPages <= 1) return;
+
+        for (let i = 1; i <= totalPages; i++) {
+            const btn = document.createElement("button");
+            btn.textContent = i;
+            btn.style.margin = "0 4px";
+            btn.style.padding = "4px 10px";
+            btn.style.border = i === currentPage ? "2px solid hsl(127, 41%, 34%)" : "1px solid #ccc";
+            btn.style.background = i === currentPage ? "hsl(127, 41%, 96%)" : "white";
+            btn.style.cursor = "pointer";
+            btn.onclick = () => loadRecentAnnouncements(i);
+            container.appendChild(btn);
+        }
+    }
+
 
     async function handleComplaintResponse(message) {
         if (!selectedComplaintId) {
@@ -627,7 +761,7 @@ function selectComplaint(userId, complaintId, event) {
         formData.append("city", config.city);
         formData.append("barangay", config.barangay);
 
-        const response = await fetch("/submit_admin_response", {
+        const response = await fetch(`/submit_admin_response/${config.city}/${config.barangay}`, {
             method: "POST",
             body: formData
         });
