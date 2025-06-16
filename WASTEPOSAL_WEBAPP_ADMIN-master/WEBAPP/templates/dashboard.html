@@ -102,10 +102,11 @@
 <body>
     <header>
         <div class="logo-section">
-                <img src="https://cdn.discordapp.com/attachments/1227897073232252938/1380464480340807721/0Hfg9SkrgKbAAAAAElFTkSuQmCC.png?ex=6845f37b&is=6844a1fb&hm=05e7c83afb8f915c017b7e9f0dc689c3b224d124533c420553a567815dac5eaa&" 
+                <img src="https://media.discordapp.net/attachments/1227897073232252938/1380464480340807721/0Hfg9SkrgKbAAAAAElFTkSuQmCC.png?ex=6843f93b&is=6842a7bb&hm=15f3f6fc074794c57195a5c0bd92317e7886309cb0cd52e82ef2fa7c9cbc5819&=&format=webp&quality=lossless" 
                  alt="Wasteposal Logo" 
                  class="logo-img">
             <div>
+                
                 <h2 style="margin:0">Wasteposal</h2>
                 <p style="margin:0">MANAGE GARBAGE COLLECTION<br>TRACKER & SCHEDULE</p>
             </div>
@@ -115,7 +116,7 @@
     <div class="main">
         <div class="cards">
             <div class="card">
-               <a href="{{ url_for('complaints.complaints_page') }}" class="card">
+               <a href="{{ url_for('complaints.complaints_page', city=city, barangay=barangay) }}" class="card">
                     <i class="fas fa-envelope"></i>
                     <p><strong>MANAGE ANNOUNCEMENTS<br>AND REQUESTS</strong></p>
                 </a>
@@ -128,12 +129,14 @@
         </div>
 
         <div class="footer-cards">
-            <a href="{{ url_for('register_page') }}" class="card">
+            <a href="{{ url_for('reg_collector') }}" class="card">
                 <div class="footer-card">
                     <i class="fas fa-user-plus"></i>
-                    <p><strong>Register Collector</strong></p>
+                    <p>Register Collector</p>
                 </div>
             </a>  
+
+
         </div>
     </div>
 </body>
